@@ -19,7 +19,7 @@ def calculate_match(resume_skills,job_skills):
   score = round(len(matched_keys)/len(job_normalized) * 100)
 
   return {
-    "Score":score,
-    "Matched Skills":sorted(matched_skills),
-    "Missing Skills":sorted(missing_skills)
+    "score": score,
+    "matched_skills": sorted(matched_skills),
+    "missing_skills": sorted(missing_skills)
   }
