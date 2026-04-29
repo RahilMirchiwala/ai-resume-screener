@@ -3,8 +3,17 @@ from parser import extract_text_from_pdf
 from extractor import extract_skills
 from matcher import calculate_match
 from explainer import generate_explanation
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
