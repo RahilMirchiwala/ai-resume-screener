@@ -4,6 +4,8 @@ from parser import extract_text_from_pdf
 from extractor import extract_skills
 from matcher import calculate_match
 from explainer import generate_explanation
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -18,6 +20,10 @@ app.add_middleware(
 @app.get("/")
 def root():
     return {"message": "AI Resume Screener API is running"}
+
+@app.get("/ui")
+def serve_ui():
+    return FileResponse("index.html")
 
 @app.post("/analyze")
 async def analyze(
