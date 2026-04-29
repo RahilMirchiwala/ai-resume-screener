@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Resume Screener</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f1117;
+      color: #e8eaf0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 { font-size: 1.5rem; font-weight: 500; }
+    header p  { font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem; }
+
+    .card {
+      background: #1a1d27;
+      border: 1px solid #2a2d3a;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .label {
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+    }
+
+    .drop-zone {
+      border: 1px dashed #3a3d4a;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .drop-zone:hover { border-color: #6366f1; }
+    .drop-zone input { display: none; }
+    .drop-zone p { font-size: 14px; color: #6b7280; }
+    .drop-zone span { color: #6366f1; cursor: pointer; }
+
+    .file-name {
+      font-size: 14px;
+      color: #6366f1;
+      margin-top: 0.5rem;
+      display: none;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: #0f1117;
+      border: 1px solid #2a2d3a;
+      border-radius: 8px;
+      color: #e8eaf0;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      padding: 0.75rem;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea:focus { border-color: #6366f1; }
+
+    button#analyzeBtn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 1.5rem;
+    }
+
+    button#analyzeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+    button#analyzeBtn:hover:not(:disabled) { background: #4f46e5; }
+
+    .score-number {
+      font-size: 3rem;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .score-bar-bg {
+      height: 5px;
+      background: #2a2d3a;
+      border-radius: 3px;
+      margin-top: 0.75rem;
+      overflow: hidden;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 1s ease;
+    }
+
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .tag {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    .tag-match   { background: #052e16; color: #4ade80; }
+    .tag-missing { background: #450a0a; color: #f87171; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .explanation {
+      font-size: 14px;
+      line-height: 1.8;
+      color: #9ca3af;
+    }
+
+    .explanation p { margin-bottom: 0.75rem; }
+
+    .error {
+      background: #450a0a;
+      color: #f87171;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #6b7280;
+      font-size: 14px;
+      display: none;
+    }
+
+    #results { display: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>AI Resume Screener</h1>
+    <p>Upload resume + paste job description → get match score</p>
+  </header>
+
+  <div class="error" id="error"></div>
+
+  <div class="card">
+    <div class="label">01 — Resume PDF</div>
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".pdf" />
+      <p>Drop PDF here or <span onclick="document.getElementById('fileInput').click()">browse</span></p>
+    </div>
+    <div class="file-name" id="fileName"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">02 — Job Description</div>
+    <textarea id="jdInput" placeholder="Paste the job description here..."></textarea>
+  </div>
+
+  <button id="analyzeBtn" onclick="analyze()">Analyze Match</button>
+
+  <div class="loading" id="loading">Analyzing... this takes 15–20 seconds</div>
+
+  <div id="results">
+
+    <div class="card">
+      <div class="label">Match Score</div>
+      <div class="score-number" id="scoreNum">0</div>
+      <div class="score-bar-bg">
+        <div class="score-bar-fill" id="scoreBar"></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="label">Matched Skills</div>
+        <div class="skills-grid" id="matchedSkills"></div>
+      </div>
+      <div class="card">
+        <div class="label">Missing Skills</div>
+        <div class="skills-grid" id="missingSkills"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">AI Analysis</div>
+      <div class="explanation" id="explanation"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API = "https://ai-resume-screener-1-hw2o.onrender.com";
+  let selectedFile = null;
+
+  document.getElementById('fileInput').addEventListener('change', function() {
+    if (this.files[0]) setFile(this.files[0]);
+  });
+
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.pdf')) setFile(file);
+  });
+
+  function setFile(file) {
+    selectedFile = file;
+    const fn = document.getElementById('fileName');
+    fn.textContent = file.name;
+    fn.style.display = 'block';
+  }
+
+  async function analyze() {
+    const jd = document.getElementById('jdInput').value.trim();
+    const errorEl = document.getElementById('error');
+    errorEl.style.display = 'none';
+
+    if (!selectedFile) { showError('Please upload a resume PDF.'); return; }
+    if (!jd) { showError('Please paste a job description.'); return; }
+
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+
+    try {
+      const formData = new FormData();
+      formData.append('resume', selectedFile);
+      formData.append('job_description', jd);
+
+      const res = await fetch(`${API}/analyze`, { method: 'POST', body: formData });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Server error'); }
+
+      const data = await res.json();
+      renderResults(data);
+    } catch(err) {
+      showError('Error: ' + err.message);
+    } finally {
+      document.getElementById('analyzeBtn').disabled = false;
+      document.getElementById('loading').style.display = 'none';
+    }
+  }
+
+  function renderResults(data) {
+    const score = data.score;
+    document.getElementById('scoreNum').textContent = score;
+
+    const bar = document.getElementById('scoreBar');
+    bar.style.background = score >= 70 ? '#4ade80' : score >= 40 ? '#fbbf24' : '#f87171';
+    setTimeout(() => { bar.style.width = score + '%'; }, 100);
+
+    renderTags('matchedSkills', data.matched_skills, 'tag-match');
+    renderTags('missingSkills', data.missing_skills, 'tag-missing');
+
+    const expEl = document.getElementById('explanation');
+    expEl.innerHTML = data.explanation
+      .split('\n\n')
+      .filter(p => p.trim())
+      .map(p => `<p>${p}</p>`)
+      .join('');
+
+    document.getElementById('results').style.display = 'block';
+  }
+
+  function renderTags(id, items, cls) {
+    const el = document.getElementById(id);
+    if (!items || items.length === 0) {
+      el.innerHTML = '<span style="color:#6b7280;font-size:13px">None</span>';
+      return;
+    }
+    el.innerHTML = items.map(s => `<span class="tag ${cls}">${s}</span>`).join('');
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+</script>
+</body>
+</html>
